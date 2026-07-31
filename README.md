@@ -36,9 +36,9 @@ you can merge by hand if you already have configs in place. If a file is
 already exactly where it needs to be (e.g. `wezterm.lua` when cloned
 directly into `~/.config/wezterm`), it prints `ok:` and leaves it alone.
 
-Requires on `PATH`: `wezterm`, `fish`, `direnv`, and `nix` (with flakes
-enabled). Any of these being missing degrades gracefully at runtime rather
-than breaking your shell — see below.
+Requires on `PATH`: `wezterm`, `fish`, `direnv`, `nix` (with flakes enabled),
+and optionally `zoxide`. Any of these being missing degrades gracefully at
+runtime rather than breaking your shell — see below.
 
 ## What's in it
 
@@ -72,6 +72,12 @@ concern, not a WezTerm one, so it lives in fish:
    move in and out of the directory — no further action needed.
 3. `direnv/direnvrc` defines `use_flake`, so `.envrc` files with `use flake`
    work with plain direnv + nix, no extra tooling required.
+
+`fish/config.fish` also sets up [zoxide](https://github.com/ajeetdsouza/zoxide)
+if it's installed: `z <partial name>` jumps to your most-visited matching
+directory (a maintained, faster rewrite of the classic `z`; `zi` gives an
+interactive picker). No config changes needed — install the `zoxide` binary
+and it's picked up automatically.
 
 **Gracefully skips itself** if `direnv` or `nix` aren't on `PATH`, if the
 directory isn't a flake, or if the flake fails to evaluate — direnv reports

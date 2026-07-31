@@ -9,4 +9,10 @@ if status is-interactive
     if command -q direnv
         direnv hook fish | source
     end
+
+    # zoxide: `z <partial name>` jumps to your most frecent matching
+    # directory (a modern, maintained rewrite of the classic `z`).
+    if command -q zoxide
+        zoxide init fish | source
+    end
 end
