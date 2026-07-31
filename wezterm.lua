@@ -17,6 +17,12 @@ config.scrollback_lines = 10000
 config.audible_bell = "Disabled"
 config.adjust_window_size_when_changing_font_size = false
 
+-- If a spawned shell dies immediately (missing binary, bad WSL domain,
+-- broken flake env, etc), keep the pane open showing why instead of the
+-- whole window silently vanishing. Still closes automatically on a normal
+-- `exit`.
+config.exit_behavior = "CloseOnCleanExit"
+
 -- ============================================================================
 -- Shell: launch fish inside WezTerm, but never break WezTerm if fish isn't
 -- installed -- fall back to whatever WezTerm would otherwise use. This only
@@ -70,9 +76,16 @@ if wezterm.target_triple:find("windows") then
 		-- sidesteps decoding it by hand and skips any BOM/control bytes, and
 		-- works unchanged if the output turns out to be plain ASCII instead.
 		local cleaned = wsl_out:gsub("%z", "")
+		-- Docker Desktop's WSL2 backend registers its own hidden utility
+		-- distros alongside real ones; they have no usable shell/home
+		-- environment, so picking one as the default would spawn-fail
+		-- immediately. Never treat them as candidates.
+		local skip = { ["docker-desktop"] = true, ["docker-desktop-data"] = true }
 		local distros = {}
 		for name in cleaned:gmatch("[%w%.%-_]+") do
-			table.insert(distros, name)
+			if not skip[name] then
+				table.insert(distros, name)
+			end
 		end
 
 		if #distros > 0 then
