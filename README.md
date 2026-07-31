@@ -141,12 +141,24 @@ variable, set on the **Windows** side:
    (swap in the exact path from step 1 if it differs.)
 
 Once that's set, `wezterm.lua`'s WSL bridge section takes over: it asks
-Windows for your installed WSL distros (`wsl.exe -l -q`), builds a
-`wsl_domains` entry for each one with `fish -l` as that domain's shell, and
-sets `default_domain` to the first one it finds — so every new window, tab,
-or split opens straight into WSL running fish, instead of PowerShell. The
-plain `default_prog` fish check further up the file only affects the native
-Windows domain, which you'll rarely land in with this set.
+Windows for your installed WSL distros (`wsl.exe -l -q`), picks the first
+one it finds (skipping Docker Desktop's hidden `docker-desktop`/
+`docker-desktop-data` utility distros if present), and points
+`default_prog` at a fully-formed `wsl.exe --distribution <name> --cd ~
+--user <you> --exec fish -l` invocation — so every new window, tab, or
+split opens straight into WSL running fish, instead of PowerShell.
+
+This is deliberately a `default_prog` override rather than a `wsl_domains` +
+`default_domain` setup (which is the more "proper" WezTerm way to do this).
+WezTerm has a [long-standing bug](https://github.com/wezterm/wezterm/issues/2126)
+where a WSL domain's working-directory handling can resolve to an empty
+string on launch, which `wsl.exe` rejects outright
+(`Wsl/E_INVALIDARG: The parameter is incorrect`) instead of falling back to
+`default_cwd`. Baking `--cd ~` directly into the `default_prog` argv sidesteps
+that cwd-inheritance step entirely. The tradeoff: this targets one distro
+(the first one found), not a separate named domain per distro — fine for
+the common single-distro case; multi-distro setups should use WezTerm's
+`wsl_domains` docs directly instead.
 
 This step degrades gracefully too: if `WEZTERM_CONFIG_FILE` isn't set,
 Windows WezTerm just uses its normal config location and none of this

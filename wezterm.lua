@@ -60,12 +60,24 @@ end
 -- This config file can live inside a WSL distro's filesystem while still
 -- being loaded by the Windows build of WezTerm (via the WEZTERM_CONFIG_FILE
 -- env var pointing at its \\wsl.localhost\... path -- see the README). In
--- that setup, `default_prog` above only controls the native Windows domain,
--- which isn't where fish/direnv/nix live. So: ask Windows for the list of
--- installed WSL distros, give each one its own domain with fish as its
--- shell, and default straight into the first one. If `wsl.exe` isn't
--- available or no distro is found, this does nothing and WezTerm behaves
--- like a normal Windows terminal.
+-- that setup, the `default_prog` set above only affects the native Windows
+-- domain, which isn't where fish/direnv/nix live -- it never touches WSL.
+--
+-- The obvious approach is a wsl_domains + default_domain config (each
+-- installed distro gets its own named domain). That's what this used to do,
+-- but WezTerm has a long-standing bug where a WSL domain's cwd handling can
+-- resolve to an empty string on launch, which wsl.exe rejects outright
+-- (Wsl/E_INVALIDARG), instead of falling back to default_cwd:
+-- https://github.com/wezterm/wezterm/issues/2126
+--
+-- The workaround (used here, and the one documented in that issue thread)
+-- is to skip wsl_domains and instead point default_prog at a fully-formed
+-- wsl.exe invocation, with --cd ~ baked directly into argv so there's no
+-- cwd-inheritance step for WezTerm to get wrong. This targets a single
+-- distro (the first one found) rather than giving each installed distro its
+-- own domain -- fine for the common single-distro case; if you have several
+-- distros and want to pick between them, see WezTerm's wsl_domains docs and
+-- reintroduce that instead.
 -- ============================================================================
 if wezterm.target_triple:find("windows") then
 	local wsl_ok, wsl_out = try_run({ "wsl.exe", "-l", "-q" })
@@ -89,38 +101,29 @@ if wezterm.target_triple:find("windows") then
 		end
 
 		if #distros > 0 then
-			config.wsl_domains = {}
-			for _, distro in ipairs(distros) do
-				local domain = {
-					name = "WSL:" .. distro,
-					distribution = distro,
-					default_prog = { "fish", "-l" },
-					-- Without this, WezTerm can pass an empty string as
-					-- wsl.exe's --cd argument (e.g. on first launch, with no
-					-- prior pane to inherit a cwd from), which wsl.exe
-					-- rejects outright with Wsl/E_INVALIDARG. "~" is
-					-- wsl.exe's own documented shorthand for "home
-					-- directory", so this is always a valid value.
-					default_cwd = "~",
-				}
+			local distro = distros[1]
 
-				-- Leaving `username` unset here is what caused panes to
-				-- launch as the wrong user (root) instead of your normal
-				-- login -- and land in root's un-configured $HOME, which is
-				-- why a fresh, un-symlinked `~/.config/fish` kept
-				-- reappearing. Ask the distro who its actual default user
-				-- is and pin it explicitly instead of leaving it to chance.
-				local who_ok, who_out = try_run({ "wsl.exe", "-d", distro, "--", "whoami" })
-				if who_ok and who_out then
-					local username = who_out:gsub("%z", ""):gsub("%s+", "")
-					if username ~= "" then
-						domain.username = username
-					end
+			-- Ask the distro who its actual default user is and pin it
+			-- explicitly, rather than leaving it to wsl.exe's own default
+			-- (which is not guaranteed to be your normal login user).
+			local username = nil
+			local who_ok, who_out = try_run({ "wsl.exe", "-d", distro, "--", "whoami" })
+			if who_ok and who_out then
+				local u = who_out:gsub("%z", ""):gsub("%s+", "")
+				if u ~= "" then
+					username = u
 				end
-
-				table.insert(config.wsl_domains, domain)
 			end
-			config.default_domain = "WSL:" .. distros[1]
+
+			local argv = { "wsl.exe", "--distribution", distro, "--cd", "~" }
+			if username then
+				table.insert(argv, "--user")
+				table.insert(argv, username)
+			end
+			table.insert(argv, "--exec")
+			table.insert(argv, "fish")
+			table.insert(argv, "-l")
+			config.default_prog = argv
 		end
 	end
 end
