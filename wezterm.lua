@@ -91,11 +91,27 @@ if wezterm.target_triple:find("windows") then
 		if #distros > 0 then
 			config.wsl_domains = {}
 			for _, distro in ipairs(distros) do
-				table.insert(config.wsl_domains, {
+				local domain = {
 					name = "WSL:" .. distro,
 					distribution = distro,
 					default_prog = { "fish", "-l" },
-				})
+				}
+
+				-- Leaving `username` unset here is what caused panes to
+				-- launch as the wrong user (root) instead of your normal
+				-- login -- and land in root's un-configured $HOME, which is
+				-- why a fresh, un-symlinked `~/.config/fish` kept
+				-- reappearing. Ask the distro who its actual default user
+				-- is and pin it explicitly instead of leaving it to chance.
+				local who_ok, who_out = try_run({ "wsl.exe", "-d", distro, "--", "whoami" })
+				if who_ok and who_out then
+					local username = who_out:gsub("%z", ""):gsub("%s+", "")
+					if username ~= "" then
+						domain.username = username
+					end
+				end
+
+				table.insert(config.wsl_domains, domain)
 			end
 			config.default_domain = "WSL:" .. distros[1]
 		end
