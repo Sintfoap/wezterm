@@ -1,0 +1,12 @@
+# Adds `use flake` support to direnv, so a bare `.envrc` containing
+# `use flake` loads a repo's `nix develop` environment.
+#
+# If nix-direnv is installed it provides a faster, caching version of this
+# same function and takes precedence automatically -- this is just a
+# dependency-free fallback so things work with plain direnv + nix. See the
+# README for how to add nix-direnv later if you want the caching.
+use_flake() {
+  watch_file flake.nix
+  watch_file flake.lock
+  eval "$(nix print-dev-env "$@")"
+}
