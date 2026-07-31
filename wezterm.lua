@@ -95,6 +95,13 @@ if wezterm.target_triple:find("windows") then
 					name = "WSL:" .. distro,
 					distribution = distro,
 					default_prog = { "fish", "-l" },
+					-- Without this, WezTerm can pass an empty string as
+					-- wsl.exe's --cd argument (e.g. on first launch, with no
+					-- prior pane to inherit a cwd from), which wsl.exe
+					-- rejects outright with Wsl/E_INVALIDARG. "~" is
+					-- wsl.exe's own documented shorthand for "home
+					-- directory", so this is always a valid value.
+					default_cwd = "~",
 				}
 
 				-- Leaving `username` unset here is what caused panes to
