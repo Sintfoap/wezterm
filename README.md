@@ -112,10 +112,16 @@ variable, set on the **Windows** side:
 1. Find your distro name and confirm the config path, from PowerShell:
    ```powershell
    wsl -l -v
-   wsl -e wslpath -w ~/.config/wezterm/wezterm.lua
+   wsl -e bash -lc "wslpath -w ~/.config/wezterm/wezterm.lua"
    ```
-   The second command prints the Windows-style path to paste below (something
-   like `\\wsl.localhost\Ubuntu\home\interstellar\.config\wezterm\wezterm.lua`).
+   The second command must go through `bash -lc` like this -- `wsl -e wslpath
+   -w ~/...` (without a shell in between) never expands the `~`, since `-e`
+   runs the program directly instead of through a shell. That silently
+   produces a bogus relative path instead of erroring, which is exactly what
+   causes the confusing "file not found" loop below if you copy it in
+   anyway. The `bash -lc` form prints the real Windows-style path to paste
+   below (something like
+   `\\wsl.localhost\Ubuntu\home\interstellar\.config\wezterm\wezterm.lua`).
 2. Set the env var permanently (PowerShell, then close and reopen any
    terminal for it to take effect):
    ```powershell
