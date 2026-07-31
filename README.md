@@ -7,10 +7,11 @@ automatic Nix flake dev shells, and a couple of QoL defaults.
 
 ```
 wezterm.lua                    WezTerm config (appearance, keys, plugins)
-fish/config.fish                fish config (direnv hook)
+fish/config.fish                fish config (direnv + zoxide hooks)
 fish/conf.d/nix-flake-direnv.fish   auto-provisions direnv for flake.nix repos
 direnv/direnvrc                 adds `use flake` support to direnv
-install.sh                      symlinks the above into ~/.config
+deps.sh                         checks/installs fish, direnv, zoxide, nix
+install.sh                      symlinks the config files into ~/.config
 ```
 
 `wezterm.lua` sits at the repo root on purpose, so this works with either
@@ -27,18 +28,28 @@ way of getting it onto your machine:
 ## Install
 
 ```sh
-./install.sh
+./deps.sh --install   # check + install fish, direnv, zoxide (nix reported, not auto-installed)
+./install.sh          # symlink the config files into place
 ```
 
-Symlinks each file into `$XDG_CONFIG_HOME` (defaults to `~/.config`). It
-won't overwrite a file that's already there — it prints `skip:` instead so
-you can merge by hand if you already have configs in place. If a file is
-already exactly where it needs to be (e.g. `wezterm.lua` when cloned
-directly into `~/.config/wezterm`), it prints `ok:` and leaves it alone.
+`deps.sh` checks for `fish`, `direnv`, `zoxide`, and `nix`, and — with
+`--install` — installs whichever of `fish`/`direnv`/`zoxide` are missing via
+whatever package manager it finds (`apt-get`, `brew`, `dnf`, or `pacman`).
+Run it without `--install` first if you just want to see what's missing.
+`nix` is deliberately not auto-installed: setting it up is a bigger,
+system-wide step (build users, a daemon), so `deps.sh` just prints the
+recommended installer command and checks whether flakes are enabled if it's
+already there.
 
-Requires on `PATH`: `wezterm`, `fish`, `direnv`, `nix` (with flakes enabled),
-and optionally `zoxide`. Any of these being missing degrades gracefully at
-runtime rather than breaking your shell — see below.
+`install.sh` symlinks each config file into `$XDG_CONFIG_HOME` (defaults to
+`~/.config`). It won't overwrite a file that's already there — it prints
+`skip:` instead so you can merge by hand if you already have configs in
+place. If a file is already exactly where it needs to be (e.g. `wezterm.lua`
+when cloned directly into `~/.config/wezterm`), it prints `ok:` and leaves it
+alone.
+
+Everything here degrades gracefully at runtime if a dependency turns out to
+be missing anyway — see below.
 
 ## What's in it
 
