@@ -19,7 +19,9 @@ config.adjust_window_size_when_changing_font_size = false
 
 -- ============================================================================
 -- Shell: launch fish inside WezTerm, but never break WezTerm if fish isn't
--- installed -- fall back to whatever WezTerm would otherwise use.
+-- installed -- fall back to whatever WezTerm would otherwise use. This only
+-- affects the native/local domain (Linux, macOS, or the Windows side of a
+-- WSL setup) -- see the WSL bridge section below for the WSL case.
 -- ============================================================================
 local fish_ok = wezterm.run_child_process({ "fish", "--version" })
 if fish_ok then
@@ -30,6 +32,47 @@ end
 -- behavior lives in the fish config (fish/conf.d/nix-flake-direnv.fish),
 -- since it's the shell -- not WezTerm -- that reacts to `cd`. See the
 -- top-level README for how it's wired together.
+
+-- ============================================================================
+-- WSL bridge (Windows only, no-op everywhere else)
+--
+-- This config file can live inside a WSL distro's filesystem while still
+-- being loaded by the Windows build of WezTerm (via the WEZTERM_CONFIG_FILE
+-- env var pointing at its \\wsl.localhost\... path -- see the README). In
+-- that setup, `default_prog` above only controls the native Windows domain,
+-- which isn't where fish/direnv/nix live. So: ask Windows for the list of
+-- installed WSL distros, give each one its own domain with fish as its
+-- shell, and default straight into the first one. If `wsl.exe` isn't
+-- available or no distro is found, this does nothing and WezTerm behaves
+-- like a normal Windows terminal.
+-- ============================================================================
+if wezterm.target_triple:find("windows") then
+	local wsl_ok, wsl_out = wezterm.run_child_process({ "wsl.exe", "-l", "-q" })
+	if wsl_ok then
+		-- `wsl -l -q` emits UTF-16LE when its output isn't a real console (as
+		-- is the case here), i.e. every character is followed by a null byte.
+		-- Strip those, then pull out runs of name-safe characters -- that
+		-- sidesteps decoding it by hand and skips any BOM/control bytes, and
+		-- works unchanged if the output turns out to be plain ASCII instead.
+		local cleaned = wsl_out:gsub("%z", "")
+		local distros = {}
+		for name in cleaned:gmatch("[%w%.%-_]+") do
+			table.insert(distros, name)
+		end
+
+		if #distros > 0 then
+			config.wsl_domains = {}
+			for _, distro in ipairs(distros) do
+				table.insert(config.wsl_domains, {
+					name = "WSL:" .. distro,
+					distribution = distro,
+					default_prog = { "fish", "-l" },
+				})
+			end
+			config.default_domain = "WSL:" .. distros[1]
+		end
+	end
+end
 
 -- ============================================================================
 -- Leader key + basic tmux-style pane/tab bindings

@@ -46,7 +46,8 @@ than breaking your shell — see below.
 - Catppuccin Mocha color scheme, JetBrains Mono font, sane padding/scrollback.
 - `default_prog` launches `fish -l`, but only if `fish --version` actually
   succeeds at config-load time — otherwise WezTerm falls back to its normal
-  default shell instead of failing to open a pane.
+  default shell instead of failing to open a pane. On Windows-plus-WSL setups
+  this is superseded by the WSL bridge section below.
 - A `CTRL+a` leader key with tmux-style pane/tab bindings (`leader |`/`-` to
   split, `leader h/j/k/l` to move between panes, `leader c` new tab, etc).
 - [resurrect.wezterm](https://github.com/StephenGemin/resurrect.wezterm) —
@@ -90,6 +91,49 @@ the `direnv allow "$dir" >/dev/null 2>&1` line in
 `home-manager` or `nix profile install nixpkgs#nix-direnv`) gives you a
 faster, caching `use flake` implementation and takes over automatically —
 nothing here needs to change.
+
+## WSL setup (Windows + this config living inside a WSL distro)
+
+If WezTerm itself is the **Windows** build (check with `where wezterm.exe`
+in PowerShell — this is what you get from the normal WezTerm installer) but
+this repo lives inside a WSL distro's filesystem, Windows `wezterm.exe`
+won't find `wezterm.lua` on its own: it looks in your Windows user profile
+by default, not inside WSL.
+
+Point it at the file explicitly with the `WEZTERM_CONFIG_FILE` environment
+variable, set on the **Windows** side:
+
+1. Find your distro name and confirm the config path, from PowerShell:
+   ```powershell
+   wsl -l -v
+   wsl -e wslpath -w ~/.config/wezterm/wezterm.lua
+   ```
+   The second command prints the Windows-style path to paste below (something
+   like `\\wsl.localhost\Ubuntu\home\interstellar\.config\wezterm\wezterm.lua`).
+2. Set the env var permanently (PowerShell, then close and reopen any
+   terminal for it to take effect):
+   ```powershell
+   setx WEZTERM_CONFIG_FILE "\\wsl.localhost\Ubuntu\home\interstellar\.config\wezterm\wezterm.lua"
+   ```
+   (swap in the exact path from step 1 if it differs.)
+
+Once that's set, `wezterm.lua`'s WSL bridge section takes over: it asks
+Windows for your installed WSL distros (`wsl.exe -l -q`), builds a
+`wsl_domains` entry for each one with `fish -l` as that domain's shell, and
+sets `default_domain` to the first one it finds — so every new window, tab,
+or split opens straight into WSL running fish, instead of PowerShell. The
+plain `default_prog` fish check further up the file only affects the native
+Windows domain, which you'll rarely land in with this set.
+
+This step degrades gracefully too: if `WEZTERM_CONFIG_FILE` isn't set,
+Windows WezTerm just uses its normal config location and none of this
+applies. If `wsl.exe` isn't found or no distro is detected, the WSL bridge
+section is a no-op and WezTerm behaves like a stock Windows terminal.
+
+Everything else — the fish config, the nix-flake-direnv auto-load, the
+direnv setup — still needs `fish`, `direnv`, and `nix` installed **inside**
+WSL (not Windows), since that's where they actually run once a pane lands
+there.
 
 ## Adding more plugins
 
