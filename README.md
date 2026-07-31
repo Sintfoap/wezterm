@@ -6,12 +6,23 @@ automatic Nix flake dev shells, and a couple of QoL defaults.
 ## Layout
 
 ```
-wezterm/wezterm.lua           WezTerm config (appearance, keys, plugins)
-fish/config.fish              fish config (direnv hook)
+wezterm.lua                    WezTerm config (appearance, keys, plugins)
+fish/config.fish                fish config (direnv hook)
 fish/conf.d/nix-flake-direnv.fish   auto-provisions direnv for flake.nix repos
-direnv/direnvrc                adds `use flake` support to direnv
-install.sh                     symlinks the above into ~/.config
+direnv/direnvrc                 adds `use flake` support to direnv
+install.sh                      symlinks the above into ~/.config
 ```
+
+`wezterm.lua` sits at the repo root on purpose, so this works with either
+way of getting it onto your machine:
+
+- **Cloned straight into `~/.config/wezterm`** (WezTerm's own recommended
+  pattern) — `wezterm.lua` is already exactly where WezTerm looks for it.
+  Still run `./install.sh` from inside that clone to wire up the fish and
+  direnv pieces, which need to land under `~/.config/fish` and
+  `~/.config/direnv` instead.
+- **Cloned anywhere else** — run `./install.sh` and everything, including
+  `wezterm.lua`, gets symlinked into place.
 
 ## Install
 
@@ -21,7 +32,9 @@ install.sh                     symlinks the above into ~/.config
 
 Symlinks each file into `$XDG_CONFIG_HOME` (defaults to `~/.config`). It
 won't overwrite a file that's already there — it prints `skip:` instead so
-you can merge by hand if you already have configs in place.
+you can merge by hand if you already have configs in place. If a file is
+already exactly where it needs to be (e.g. `wezterm.lua` when cloned
+directly into `~/.config/wezterm`), it prints `ok:` and leaves it alone.
 
 Requires on `PATH`: `wezterm`, `fish`, `direnv`, and `nix` (with flakes
 enabled). Any of these being missing degrades gracefully at runtime rather
@@ -29,7 +42,7 @@ than breaking your shell — see below.
 
 ## What's in it
 
-**WezTerm** (`wezterm/wezterm.lua`)
+**WezTerm** (`wezterm.lua`)
 - Catppuccin Mocha color scheme, JetBrains Mono font, sane padding/scrollback.
 - `default_prog` launches `fish -l`, but only if `fish --version` actually
   succeeds at config-load time — otherwise WezTerm falls back to its normal
@@ -84,4 +97,4 @@ Kept this to one WezTerm plugin deliberately since it already covers
 sessions, workspaces, and the status bar. Browse
 [michaelbrusegard/awesome-wezterm](https://github.com/michaelbrusegard/awesome-wezterm)
 if you want more (tab-bar themes, smart-splits, etc) — add them the same way,
-with `wezterm.plugin.require(...)` in `wezterm/wezterm.lua`.
+with `wezterm.plugin.require(...)` in `wezterm.lua`.

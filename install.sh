@@ -11,8 +11,8 @@ link() {
 	local src="$1" dest="$2"
 	mkdir -p "$(dirname "$dest")"
 	if [ -e "$dest" ] || [ -L "$dest" ]; then
-		if [ "$(readlink "$dest" 2>/dev/null || true)" = "$src" ]; then
-			echo "ok:   $dest"
+		if [ "$(realpath "$dest" 2>/dev/null || true)" = "$(realpath "$src")" ]; then
+			echo "ok:   $dest (already in place)"
 			return
 		fi
 		echo "skip: $dest already exists (not touching it)"
@@ -22,7 +22,10 @@ link() {
 	echo "linked: $dest -> $src"
 }
 
-link "$repo_dir/wezterm/wezterm.lua" "$config_home/wezterm/wezterm.lua"
+# If this repo was cloned directly into ~/.config/wezterm, wezterm.lua is
+# already sitting exactly where WezTerm looks for it -- the check above
+# turns this into a no-op "ok" rather than a spurious "skip".
+link "$repo_dir/wezterm.lua" "$config_home/wezterm/wezterm.lua"
 link "$repo_dir/fish/config.fish" "$config_home/fish/config.fish"
 link "$repo_dir/fish/conf.d/nix-flake-direnv.fish" "$config_home/fish/conf.d/nix-flake-direnv.fish"
 link "$repo_dir/direnv/direnvrc" "$config_home/direnv/direnvrc"
