@@ -22,8 +22,23 @@ config.adjust_window_size_when_changing_font_size = false
 -- installed -- fall back to whatever WezTerm would otherwise use. This only
 -- affects the native/local domain (Linux, macOS, or the Windows side of a
 -- WSL setup) -- see the WSL bridge section below for the WSL case.
+--
+-- wezterm.run_child_process raises a Lua error (rather than just returning
+-- false) when the program itself can't be found at all -- as opposed to
+-- running and exiting non-zero, which it does report as a plain false. Since
+-- "not installed" is exactly the case being checked for here, every call
+-- goes through this pcall wrapper so a missing program can't crash config
+-- loading.
 -- ============================================================================
-local fish_ok = wezterm.run_child_process({ "fish", "--version" })
+local function try_run(argv)
+	local called_ok, success, stdout = pcall(wezterm.run_child_process, argv)
+	if not called_ok then
+		return false, nil
+	end
+	return success, stdout
+end
+
+local fish_ok = try_run({ "fish", "--version" })
 if fish_ok then
 	config.default_prog = { "fish", "-l" }
 end
@@ -47,7 +62,7 @@ end
 -- like a normal Windows terminal.
 -- ============================================================================
 if wezterm.target_triple:find("windows") then
-	local wsl_ok, wsl_out = wezterm.run_child_process({ "wsl.exe", "-l", "-q" })
+	local wsl_ok, wsl_out = try_run({ "wsl.exe", "-l", "-q" })
 	if wsl_ok then
 		-- `wsl -l -q` emits UTF-16LE when its output isn't a real console (as
 		-- is the case here), i.e. every character is followed by a null byte.
